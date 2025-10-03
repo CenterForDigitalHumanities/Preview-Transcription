@@ -71,6 +71,13 @@
         .copy-icon:hover {
             opacity: 1;
         }
+
+        .copied-text {
+            font-size: 14px;
+            color: #005a8c;
+            font-weight: bold;
+            margin: 0;
+        }
     </style>
 </head>
 <body>
@@ -120,7 +127,21 @@
                     container.appendChild(copyContainer)
                     copyContainer.addEventListener("click", () => {
                         const textToCopy = items.map((item,index) => `${index + 1}. ${item}`).join("\n")
-                        navigator.clipboard.writeText(textToCopy).catch(err => console.error("Failed to copy"))
+                        const textArea = document.createElement("textarea")
+                        textArea.value = textToCopy
+                        document.body.appendChild(textArea)
+                        textArea.select()
+                        try {
+                            document.execCommand('copy')
+                        } catch (err) {
+                            console.error("Failed to copy transcription.")
+                        }
+                        document.body.removeChild(textArea)
+                        copyContainer.innerHTML = "<p class='copied-text'>✅ Copied</p>"
+                        setTimeout(() => {
+                            copyContainer.innerHTML = ""
+                            copyContainer.appendChild(copyIcon)
+                        }, 2000)
                     })
 
                     items.forEach((item,index) => {
