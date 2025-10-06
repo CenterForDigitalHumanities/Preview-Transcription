@@ -78,6 +78,16 @@
             font-weight: bold;
             margin: 0;
         }
+
+        .transcription-input {
+            border: none;
+            background: transparent;
+            font-size: 15px;
+            line-height: 1.5;
+            color: rgb(0, 90, 140);
+            font-weight: 500;
+            width: 100%;
+        }
     </style>
 </head>
 <body>
@@ -88,10 +98,10 @@
         window.addEventListener("message", async event => {
             if (!event?.data) return
             const container = document.getElementById("transcription")
-            if (event.data.type === "ANNOTATIONS") {
+            if (event.data.type === "MANIFEST_CANVAS_ANNOTATIONPAGE_ANNOTATION") {
                 try {
-                    if (!event.data.annotations) return
-                    const response = await fetch(event.data.annotations, { cache: "no-store" })
+                    if (!event.data.annotationPage) return
+                    const response = await fetch(event.data.annotationPage, { cache: "no-store" })
                     if (!response.ok) throw new Error("Failed to fetch annotations")
                     const annotations = await response.json()
                     if (!annotations?.items?.length) {
@@ -148,19 +158,31 @@
                         const div = document.createElement("div")
                         div.className = "transcription-item"
                         div.dataset.lineid = annotations.items[index]?.id || ""
-                        div.innerHTML = `<strong>${index + 1}.</strong> <span>${item}</span>`
+                        div.innerHTML = `<strong>${index + 1}.</strong><input type="text" value="${item}" class="transcription-input"/>`
                         container.appendChild(div)
+                    })
+
+                    container.querySelectorAll(".transcription-input").forEach((input, index) => {
+                        input.addEventListener("input", (e) => {
+                            const target = e.target
+                            window.parent?.postMessage({ 
+                                type: "UPDATE_LINE_TEXT", 
+                                lineIndex: index, 
+                                text: target.value 
+                            }, "*")
+                        })
                     })
 
                     const first = container.querySelector(".transcription-item")
                     if (first) first.classList.add("selected")
-                    container.querySelectorAll(".transcription-item").forEach((item,index) => {
+                    container.querySelectorAll(".transcription-item").forEach((item, index) => {
                         item.addEventListener("click", () => {
                             container.querySelectorAll(".transcription-item").forEach(i => i.classList.remove("selected"))
                             item.classList.add("selected")
                             window.parent?.postMessage({ 
                                 type: "RETURN_LINE_ID", 
-                                lineid: item.dataset.lineid || null, lineIndex: index 
+                                lineid: item.dataset.lineid || null, 
+                                lineIndex: index 
                             }, "*")
                         })
                     })
