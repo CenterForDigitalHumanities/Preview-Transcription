@@ -173,8 +173,6 @@
                         })
                     })
 
-                    const first = container.querySelector(".transcription-item")
-                    if (first) first.classList.add("selected")
                     container.querySelectorAll(".transcription-item").forEach((item, index) => {
                         item.addEventListener("click", () => {
                             container.querySelectorAll(".transcription-item").forEach(i => i.classList.remove("selected"))
@@ -190,15 +188,30 @@
                     console.error("Error processing annotations:", err)
                 }
             }
+            if (event.data.type === "CURRENT_LINE_INDEX") {
+                const lineId = event.data.lineId
+                await new Promise(resolve => setTimeout(resolve, 1000))
+                const el = document.querySelector(`.transcription-item[data-lineid="${lineId}"]`)
+                if (el) {
+                    el.classList.add('selected')
+                    el.setAttribute('aria-selected', 'true')
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                }
+            }
             if (event.data.type === "SELECT_ANNOTATION") {
-                const index = event.data.lineId
-                if (typeof index !== "number") return
-                const items = document.querySelectorAll(".transcription-item")
-                const item = items[index]
-                if (item) {
-                    items.forEach(i => i.classList.remove("selected"))
-                    item.classList.add("selected")
-                    item.scrollIntoView({ behavior: "smooth", block: "center" })
+                const lineId = event.data.lineId
+                document.querySelectorAll(`.transcription-item`).forEach(box => {
+                    if (box.getAttribute('data-lineid') !== lineId) {
+                        box.classList.remove('selected')
+                        box.setAttribute('aria-selected', 'false')
+                    }
+                })
+
+                const el = document.querySelector(`.transcription-item[data-lineid="${lineId}"]`)
+                if (el) {
+                    el.classList.add('selected')
+                    el.setAttribute('aria-selected', 'true')
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
                 }
             }
         })
