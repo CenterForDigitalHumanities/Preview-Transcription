@@ -103,12 +103,32 @@
                     if (!event.data.annotationPage) return
                     const response = await fetch(event.data.annotationPage, { cache: "no-store" })
                     if (!response.ok) throw new Error("Failed to fetch annotations")
-                    const annotations = await response.json()
+                    let annotations = await response.json()
                     if (!annotations?.items?.length) {
                         container.innerHTML = `<div class="empty">No transcription available.</div>`
                         return
                     }
+                    if (!event.data.columns) return
+                    const pageColumns = event.data.columns || []
 
+                    if (!annotations || !pageColumns) return
+                    const columnsInPage = [...(pageColumns || [])]
+                    let allColumnLines = columnsInPage.flatMap(c => c.lines || [])
+                    const remainingUnorderedLines = annotations.items?.map(i => i.id).filter(id => !allColumnLines.includes(id)) || []
+                    if (remainingUnorderedLines.length > 0) {
+                        columnsInPage.push({
+                            id: "unordered-lines",
+                            label: "Unordered Lines",
+                            lines: remainingUnorderedLines
+                        })
+                    }
+                    allColumnLines = [...allColumnLines, ...remainingUnorderedLines]
+                    const orderedItems = []
+                    allColumnLines.forEach(lineId => {
+                    const line = annotations?.items.find(item => item.id === lineId)
+                        if (line) orderedItems.push(line)
+                    })
+                    annotations.items = orderedItems
                     const items = await Promise.all(
                         annotations.items.map(async anno => {
                             if (!anno?.id) return ""
