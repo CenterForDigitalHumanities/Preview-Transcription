@@ -98,7 +98,7 @@
         window.addEventListener("message", async event => {
             if (!event?.data) return
             const container = document.getElementById("transcription")
-            if (event.data.type === "MANIFEST_CANVAS_ANNOTATIONPAGE_ANNOTATION") {
+            if (event.data.type === "TPEN_CONTEXT") {
                 try {
                     if (!event.data.annotationPage) return
                     const response = await fetch(event.data.annotationPage, { cache: "no-store" })
@@ -108,11 +108,8 @@
                         container.innerHTML = `<div class="empty">No transcription available.</div>`
                         return
                     }
-                    if (!event.data.columns) return
                     const pageColumns = event.data.columns || []
-
-                    if (!annotations || !pageColumns) return
-                    const columnsInPage = [...(pageColumns || [])]
+                    const columnsInPage = [...pageColumns]
                     let allColumnLines = columnsInPage.flatMap(c => c.lines || [])
                     const remainingUnorderedLines = annotations.items?.map(i => i.id).filter(id => !allColumnLines.includes(id)) || []
                     if (remainingUnorderedLines.length > 0) {
@@ -193,48 +190,36 @@
                         })
                     })
 
-                    container.querySelectorAll(".transcription-item").forEach((item, index) => {
+                    container.querySelectorAll(".transcription-item").forEach((item) => {
                         item.addEventListener("click", () => {
-                            container.querySelectorAll(".transcription-item").forEach(i => i.classList.remove("selected"))
-                            item.classList.add("selected")
-                            window.parent?.postMessage({ 
-                                type: "RETURN_LINE_ID", 
-                                lineid: item.dataset.lineid || null, 
-                                lineIndex: index 
+                            const lineId = item.dataset.lineid || null
+                            highlightLine(lineId)
+                            window.parent?.postMessage({
+                                type: "NAVIGATE_TO_LINE",
+                                lineId
                             }, "*")
                         })
                     })
+
+                    if (event.data.currentLineId) highlightLine(event.data.currentLineId)
                 } catch (err) {
                     console.error("Error processing annotations:", err)
                 }
             }
-            if (event.data.type === "CURRENT_LINE_INDEX") {
-                const lineId = event.data.lineId
-                await new Promise(resolve => setTimeout(resolve, 1000))
-                const el = document.querySelector(`.transcription-item[data-lineid="${lineId}"]`)
-                if (el) {
-                    el.classList.add('selected')
-                    el.setAttribute('aria-selected', 'true')
-                    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                }
-            }
-            if (event.data.type === "SELECT_ANNOTATION") {
-                const lineId = event.data.lineId
-                document.querySelectorAll(`.transcription-item`).forEach(box => {
-                    if (box.getAttribute('data-lineid') !== lineId) {
-                        box.classList.remove('selected')
-                        box.setAttribute('aria-selected', 'false')
-                    }
-                })
-
-                const el = document.querySelector(`.transcription-item[data-lineid="${lineId}"]`)
-                if (el) {
-                    el.classList.add('selected')
-                    el.setAttribute('aria-selected', 'true')
-                    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                }
+            if (event.data.type === "UPDATE_CURRENT_LINE") {
+                highlightLine(event.data.currentLineId)
             }
         })
+
+        function highlightLine(lineId) {
+            if (!lineId) return
+            document.querySelectorAll(".transcription-item").forEach(box => {
+                const isMatch = box.getAttribute("data-lineid") === lineId
+                box.classList.toggle("selected", isMatch)
+                box.setAttribute("aria-selected", isMatch ? "true" : "false")
+                if (isMatch) box.scrollIntoView({ behavior: "smooth", block: "center" })
+            })
+        }
     </script>
 </body>
 </html>
